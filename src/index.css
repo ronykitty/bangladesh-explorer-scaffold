@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Hind Siliguri', 'Noto Sans Bengali', ui-sans-serif, sans-serif;
+  --font-serif: 'Tiro Bangla', ui-serif, serif;
+}
+
+:root {
+  --bg: 40 60% 96%;
+  --card: 0 0% 100%;
+  --ink: 40 60% 10%;
+  --ink-soft: 42 30% 40%;
+  --accent: 40 95% 48%;
+  --accent-dark: 38 90% 37%;
+  --line: 42 55% 84%;
+  --wishlist: 40 90% 46%;
+  --wishlist-bg: 45 100% 90%;
+  --visited: 145 60% 39%;
+  --visited-bg: 145 45% 91%;
+  --danger: 8 60% 46%;
+}
+
+.dark {
+  --bg: 40 25% 8%;
+  --card: 40 20% 12%;
+  --ink: 42 60% 94%;
+  --ink-soft: 42 20% 65%;
+  --accent: 40 95% 55%;
+  --accent-dark: 40 90% 65%;
+  --line: 40 20% 22%;
+  --wishlist: 40 90% 55%;
+  --wishlist-bg: 40 40% 18%;
+  --visited: 145 55% 48%;
+  --visited-bg: 145 30% 16%;
+  --danger: 8 65% 58%;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: hsl(var(--bg));
+  color: hsl(var(--ink));
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--line));
+  border-radius: 4px;
+}
+
+.glass {
+  background: hsl(var(--card) / 0.72);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid hsl(var(--line) / 0.6);
+}
