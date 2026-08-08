@@ -42,9 +42,9 @@ export function useTripDetail(tripId: string | null) {
     } else {
       setTrip({
         ...data,
-        division_name_bn: data.divisions?.name_bn,
-        district_name_bn: data.districts?.name_bn,
-        upazila_name_bn: data.upazilas?.name_bn,
+        division_name_bn: data.divisions?.name_bn ?? undefined,
+        district_name_bn: data.districts?.name_bn ?? undefined,
+        upazila_name_bn: data.upazilas?.name_bn ?? undefined,
       });
     }
     setLoading(false);

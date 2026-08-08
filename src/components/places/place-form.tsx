@@ -3,7 +3,8 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@/components/ui/modal'
-import { useDivisions, useDistricts, useCategories } from '@/hooks/use-reference-data'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useDivisions, useDistricts, useUpazilas, useCategories } from '@/hooks/use-reference-data'
 import { useCreatePlace, useUpdatePlace, type PlaceWithRelations } from '@/hooks/use-places'
 import { useAuth } from '@/lib/auth-context'
 import type { PlaceStatus } from '@/types/database'
@@ -11,7 +12,7 @@ import type { PlaceStatus } from '@/types/database'
 const placeSchema = z.object({
   division_id: z.string().min(1, 'বিভাগ বেছে নাও'),
   district_id: z.string().min(1, 'জেলা বেছে নাও'),
-  upazila_name: z.string().optional(),
+  upazila_id: z.string().optional(),
   union_village: z.string().optional(),
   category_id: z.string().min(1, 'ক্যাটাগরি বেছে নাও'),
   name: z.string().min(1, 'জায়গার নাম লেখো'),
@@ -44,6 +45,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
   const { user } = useAuth()
   const { data: divisions } = useDivisions()
   const { data: districts } = useDistricts()
+  const { data: upazilas } = useUpazilas()
   const { data: categories } = useCategories()
   const createPlace = useCreatePlace()
   const updatePlace = useUpdatePlace()
@@ -54,6 +56,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
     handleSubmit,
     control,
     watch,
+    setValue,
     reset,
     formState: { errors },
   } = useForm<PlaceFormValues>({
@@ -61,7 +64,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
     defaultValues: {
       division_id: '',
       district_id: '',
-      upazila_name: '',
+      upazila_id: '',
       union_village: '',
       category_id: presetCategoryId ?? '',
       name: '',
@@ -75,10 +78,16 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
   })
 
   const selectedDivisionId = watch('division_id')
+  const selectedDistrictId = watch('district_id')
 
   const filteredDistricts = useMemo(
     () => (districts ?? []).filter((d) => d.division_id === selectedDivisionId),
     [districts, selectedDivisionId]
+  )
+
+  const filteredUpazilas = useMemo(
+    () => (upazilas ?? []).filter((u) => u.district_id === selectedDistrictId),
+    [upazilas, selectedDistrictId]
   )
 
   useEffect(() => {
@@ -87,7 +96,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
       reset({
         division_id: editingPlace.district.division_id,
         district_id: editingPlace.district_id,
-        upazila_name: editingPlace.upazila_name ?? '',
+        upazila_id: editingPlace.upazila_id ?? '',
         union_village: editingPlace.union_village ?? '',
         category_id: editingPlace.category_id,
         name: editingPlace.name,
@@ -102,7 +111,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
       reset({
         division_id: '',
         district_id: '',
-        upazila_name: '',
+        upazila_id: '',
         union_village: '',
         category_id: presetCategoryId ?? '',
         name: '',
@@ -120,10 +129,17 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
   const onSubmit = async (values: PlaceFormValues) => {
     if (!user) return
     setServerError(null)
+    // The upazila is picked from the authoritative list, never typed. We
+    // store both upazila_id (the real FK, for accurate coverage tracking)
+    // and upazila_name (kept in sync from the selected upazila's Bengali
+    // name) so existing search/dashboard code that still reads
+    // upazila_name as free text keeps working without changes.
+    const selectedUpazila = (upazilas ?? []).find((u) => u.id === values.upazila_id)
     const input = {
       category_id: values.category_id,
       district_id: values.district_id,
-      upazila_name: values.upazila_name || null,
+      upazila_id: values.upazila_id || null,
+      upazila_name: selectedUpazila?.name_bn ?? selectedUpazila?.name_en ?? null,
       union_village: values.union_village || null,
       name: values.name,
       description: values.description || null,
@@ -156,26 +172,47 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>বিভাগ</label>
-            <select className={inputClasses} {...register('division_id')}>
-              <option value="">বেছে নাও</option>
-              {divisions?.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name_bn}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="division_id"
+              render={({ field }) => (
+                <SearchableSelect
+                  options={(divisions ?? []).map((d) => ({ value: d.id, label: d.name_bn }))}
+                  value={field.value}
+                  onChange={(val) => {
+                    field.onChange(val)
+                    // Changing division invalidates any previously chosen
+                    // district/upazila that no longer belongs to it.
+                    setValue('district_id', '')
+                    setValue('upazila_id', '')
+                  }}
+                  placeholder="বিভাগ বেছে নাও"
+                  searchPlaceholder="বিভাগ খুঁজুন..."
+                />
+              )}
+            />
             {errors.division_id && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.division_id.message}</p>}
           </div>
           <div>
             <label className={labelClasses}>জেলা</label>
-            <select className={inputClasses} disabled={!selectedDivisionId} {...register('district_id')}>
-              <option value="">বেছে নাও</option>
-              {filteredDistricts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name_bn}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="district_id"
+              render={({ field }) => (
+                <SearchableSelect
+                  options={filteredDistricts.map((d) => ({ value: d.id, label: d.name_bn }))}
+                  value={field.value}
+                  onChange={(val) => {
+                    field.onChange(val)
+                    setValue('upazila_id', '')
+                  }}
+                  placeholder="জেলা বেছে নাও"
+                  searchPlaceholder="জেলা খুঁজুন..."
+                  disabled={!selectedDivisionId}
+                  disabledMessage="আগে বিভাগ বেছে নাও"
+                />
+              )}
+            />
             {errors.district_id && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.district_id.message}</p>}
           </div>
         </div>
@@ -183,7 +220,21 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>উপজেলা</label>
-            <input className={inputClasses} placeholder="যেমন: সদর" {...register('upazila_name')} />
+            <Controller
+              control={control}
+              name="upazila_id"
+              render={({ field }) => (
+                <SearchableSelect
+                  options={filteredUpazilas.map((u) => ({ value: u.id, label: u.name_bn || u.name_en }))}
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  placeholder="উপজেলা বেছে নাও"
+                  searchPlaceholder="উপজেলা খুঁজুন..."
+                  disabled={!selectedDistrictId}
+                  disabledMessage="আগে জেলা বেছে নাও"
+                />
+              )}
+            />
           </div>
           <div>
             <label className={labelClasses}>ইউনিয়ন / গ্রাম / এলাকা</label>

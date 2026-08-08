@@ -18,6 +18,7 @@ export interface PlaceWithRelations {
   user_id: string
   category_id: string
   district_id: string
+  upazila_id: string | null
   upazila_name: string | null
   union_village: string | null
   name: string
@@ -61,6 +62,7 @@ export function usePlaces() {
 export interface PlaceInput {
   category_id: string
   district_id: string
+  upazila_id?: string | null
   upazila_name?: string | null
   union_village?: string | null
   name: string

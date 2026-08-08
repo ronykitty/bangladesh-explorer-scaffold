@@ -17,6 +17,14 @@ export interface District {
   slug: string
 }
 
+export interface Upazila {
+  id: string
+  district_id: string
+  name_en: string
+  name_bn: string | null
+  slug: string
+}
+
 export interface Category {
   id: string
   name_bn: string
@@ -44,6 +52,22 @@ export function useDistricts() {
       const { data, error } = await supabase.from('districts').select('*').order('name_bn')
       if (error) throw error
       return data as District[]
+    },
+    staleTime: Infinity,
+  })
+}
+
+export function useUpazilas() {
+  return useQuery({
+    queryKey: ['upazilas'],
+    queryFn: async () => {
+      // All 498 rows are fetched once and cached forever (reference data),
+      // then filtered client-side per district — same pattern as
+      // useDistricts. Avoids a network round-trip on every division/district
+      // change in a cascading picker.
+      const { data, error } = await supabase.from('upazilas').select('*').order('name_bn')
+      if (error) throw error
+      return data as Upazila[]
     },
     staleTime: Infinity,
   })
