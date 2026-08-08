@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { PlaceStatus } from '@/types/database'
+import type { PlaceStatus, PlacePriority, TransportMode } from '@/types/database'
 import type { Category, District, Division } from './use-reference-data'
+
+export type { PlacePriority, TransportMode }
 
 export interface Visit {
   id: string
@@ -25,6 +27,9 @@ export interface PlaceWithRelations {
   google_maps_url: string | null
   personal_rating: number | null
   target_date: string | null
+  estimated_cost: number | null
+  priority: PlacePriority | null
+  transport_mode: TransportMode | null
   created_at: string
   updated_at: string
   category: Category
@@ -65,6 +70,9 @@ export interface PlaceInput {
   google_maps_url?: string | null
   personal_rating?: number | null
   target_date?: string | null
+  estimated_cost?: number | null
+  priority?: PlacePriority | null
+  transport_mode?: TransportMode | null
 }
 
 export function useCreatePlace() {

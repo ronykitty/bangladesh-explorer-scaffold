@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { Loader2, MapPinned, Star, CalendarClock, Layers } from 'lucide-react'
+import { Loader2, MapPinned, Star, CalendarClock, Layers, Wallet, Bus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/page-header'
-import { usePlaces, type PlaceWithRelations } from '@/hooks/use-places'
+import { usePlaces, type PlaceWithRelations, type PlacePriority, type TransportMode } from '@/hooks/use-places'
 import { useDivisions, useDistricts } from '@/hooks/use-reference-data'
 // Adjust this import path if status-badge.tsx lives elsewhere in your project
 import { STATUS_META } from '@/components/places/status-badge'
@@ -61,6 +61,29 @@ const MONTH_NAMES = [
 
 const STATUS_ORDER: PlaceStatus[] = ['wishlist', 'planned', 'visited', 'revisited']
 
+const PRIORITY_META: Record<PlacePriority, { label: string; color: string }> = {
+  p1_must_visit: { label: 'P1 - Must Visit', color: 'bg-red-500 dark:bg-red-400' },
+  p2_high: { label: 'P2 - High', color: 'bg-orange-500 dark:bg-orange-400' },
+  p3_normal: { label: 'P3 - Normal', color: 'bg-yellow-500 dark:bg-yellow-400' },
+  p4_optional: { label: 'P4 - Optional', color: 'bg-gray-400 dark:bg-gray-500' },
+}
+const PRIORITY_ORDER: PlacePriority[] = ['p1_must_visit', 'p2_high', 'p3_normal', 'p4_optional']
+
+const TRANSPORT_META: Record<TransportMode, string> = {
+  train: 'ট্রেন',
+  local_train: 'লোকাল ট্রেন',
+  bus: 'বাস',
+  local_bus: 'লোকাল বাস',
+  launch_boat: 'লঞ্চ / নৌকা',
+  rickshaw_auto_cng: 'রিকশা / অটো / সিএনজি',
+  mixed: 'মিশ্র / একাধিক',
+}
+const TRANSPORT_ORDER: TransportMode[] = [
+  'train', 'local_train', 'bus', 'local_bus', 'launch_boat', 'rickshaw_auto_cng', 'mixed',
+]
+
+const currency = (n: number) => `৳${n.toLocaleString('en-BD', { maximumFractionDigits: 0 })}`
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -78,6 +101,7 @@ export default function DashboardPage() {
     const wishlistCount = places.filter((p) => p.status === 'wishlist').length
     const plannedCount = places.filter((p) => p.status === 'planned').length
     const revisitedCount = places.filter((p) => p.status === 'revisited').length
+    const isVisited = (p: PlaceWithRelations) => p.status === 'visited' || p.status === 'revisited'
 
     // --- Status progress -----------------------------------------------
     const statusProgress = STATUS_ORDER.map((status) => {
@@ -91,19 +115,15 @@ export default function DashboardPage() {
 
     // --- Geography coverage ---------------------------------------------
     const districtsVisited = new Set(
-      places.filter((p) => p.status === 'visited' || p.status === 'revisited').map((p) => p.district_id)
+      places.filter(isVisited).map((p) => p.district_id)
     ).size
 
     const divisionsVisited = new Set(
-      places
-        .filter((p) => p.status === 'visited' || p.status === 'revisited')
-        .map((p) => p.district.division.id)
+      places.filter(isVisited).map((p) => p.district.division.id)
     ).size
 
     const upazilasVisited = new Set(
-      places
-        .filter((p) => (p.status === 'visited' || p.status === 'revisited') && p.upazila_name)
-        .map((p) => `${p.district_id}__${p.upazila_name}`)
+      places.filter((p) => isVisited(p) && p.upazila_name).map((p) => `${p.district_id}__${p.upazila_name}`)
     ).size
 
     // --- Division coverage table -----------------------------------------
@@ -120,7 +140,7 @@ export default function DashboardPage() {
         wishlist: 0,
       }
       existing.total += 1
-      if (p.status === 'visited' || p.status === 'revisited') existing.visited += 1
+      if (isVisited(p)) existing.visited += 1
       if (p.status === 'wishlist') existing.wishlist += 1
       divisionMap.set(key, existing)
     }
@@ -140,7 +160,7 @@ export default function DashboardPage() {
         wishlist: 0,
       }
       existing.total += 1
-      if (p.status === 'visited' || p.status === 'revisited') existing.visited += 1
+      if (isVisited(p)) existing.visited += 1
       if (p.status === 'wishlist') existing.wishlist += 1
       districtMap.set(key, existing)
     }
@@ -162,7 +182,7 @@ export default function DashboardPage() {
         wishlist: 0,
       }
       existing.total += 1
-      if (p.status === 'visited' || p.status === 'revisited') existing.visited += 1
+      if (isVisited(p)) existing.visited += 1
       if (p.status === 'wishlist') existing.wishlist += 1
       upazilaMap.set(key, existing)
     }
@@ -182,10 +202,16 @@ export default function DashboardPage() {
         visited: 0,
       }
       existing.total += 1
-      if (p.status === 'visited' || p.status === 'revisited') existing.visited += 1
+      if (isVisited(p)) existing.visited += 1
       categoryMap.set(key, existing)
     }
     const categoryCounts = [...categoryMap.entries()].sort((a, b) => b[1].total - a[1].total)
+
+    // --- Priority breakdown --------------------------------------------------
+    const priorityCounts = PRIORITY_ORDER.map((priority) => ({
+      priority,
+      count: places.filter((p) => p.priority === priority).length,
+    }))
 
     // --- Rating ----------------------------------------------------------
     const ratings = places
@@ -193,10 +219,33 @@ export default function DashboardPage() {
       .filter((r): r is number => r != null)
     const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r, 0) / ratings.length : null
 
+    // --- Budget & cost tracker ------------------------------------------
+    const spotsWithCost = places.filter((p) => p.estimated_cost != null)
+    const totalBudgetAll = spotsWithCost.reduce((s, p) => s + (p.estimated_cost ?? 0), 0)
+    const visitedSpotsWithCost = spotsWithCost.filter(isVisited)
+    const totalSpentVisited = visitedSpotsWithCost.reduce((s, p) => s + (p.estimated_cost ?? 0), 0)
+    const remainingEstimate = totalBudgetAll - totalSpentVisited
+    const avgCostAll = spotsWithCost.length > 0 ? totalBudgetAll / spotsWithCost.length : 0
+    const avgCostVisited =
+      visitedSpotsWithCost.length > 0 ? totalSpentVisited / visitedSpotsWithCost.length : 0
+
+    // --- Transport mode analysis ------------------------------------------
+    const transportAnalysis = TRANSPORT_ORDER.map((mode) => {
+      const modeSpots = places.filter((p) => p.transport_mode === mode)
+      const visitedModeSpots = modeSpots.filter(isVisited)
+      const totalCostVisited = visitedModeSpots.reduce((s, p) => s + (p.estimated_cost ?? 0), 0)
+      return {
+        mode,
+        total: modeSpots.length,
+        visited: visitedModeSpots.length,
+        totalCostVisited,
+      }
+    }).filter((t) => t.total > 0)
+
     // --- Upcoming trips (target_date in the future, not yet visited) ------
     const today = new Date().toISOString().slice(0, 10)
     const upcoming = places
-      .filter((p) => p.target_date && p.target_date >= today && p.status !== 'visited' && p.status !== 'revisited')
+      .filter((p) => p.target_date && p.target_date >= today && !isVisited(p))
       .sort((a, b) => (a.target_date! < b.target_date! ? -1 : 1))
       .slice(0, 6)
 
@@ -229,7 +278,14 @@ export default function DashboardPage() {
       districtCoverage,
       upazilaCoverage,
       categoryCounts,
+      priorityCounts,
       avgRating,
+      totalBudgetAll,
+      totalSpentVisited,
+      remainingEstimate,
+      avgCostAll,
+      avgCostVisited,
+      transportAnalysis,
       upcoming,
       visitsByYearMonth,
     }
@@ -410,9 +466,9 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {/* ---------------- Category breakdown ---------------- */}
+          {/* ---------------- Category & Priority ---------------- */}
           <section className="glass mt-6 rounded-xl p-4">
-            <h2 className="font-serif text-base text-[hsl(var(--accent-dark))]">🏷️ ক্যাটাগরি অনুযায়ী</h2>
+            <h2 className="font-serif text-base text-[hsl(var(--accent-dark))]">🏷️ ক্যাটাগরি ও অগ্রাধিকার</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {stats.categoryCounts.map(([slug, c]) => (
                 <span
@@ -431,7 +487,72 @@ export default function DashboardPage() {
                 </span>
               ))}
             </div>
+
+            <div className="mt-4 flex flex-col gap-3 border-t border-[hsl(var(--line)/0.5)] pt-4">
+              {stats.priorityCounts.map(({ priority, count }) => {
+                const meta = PRIORITY_META[priority]
+                const percent = stats.total > 0 ? (count / stats.total) * 100 : 0
+                return (
+                  <div key={priority}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-[hsl(var(--ink))]">{meta.label}</span>
+                      <span className="text-[hsl(var(--ink-soft))]">{count} টি</span>
+                    </div>
+                    <CoverageBar percent={percent} colorClass={meta.color} />
+                  </div>
+                )
+              })}
+            </div>
           </section>
+
+          {/* ---------------- Budget & Cost Tracker ---------------- */}
+          <section className="glass mt-6 rounded-xl p-4">
+            <h2 className="flex items-center gap-2 font-serif text-base text-[hsl(var(--accent-dark))]">
+              <Wallet className="h-4 w-4" /> বাজেট ও খরচ
+            </h2>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard label="মোট আনুমানিক বাজেট" value={currency(stats.totalBudgetAll)} />
+              <StatCard label="মোট খরচ — ভ্রমণকৃত" value={currency(stats.totalSpentVisited)} tone="visited" />
+              <StatCard label="বাকি আনুমানিক খরচ" value={currency(stats.remainingEstimate)} tone="wishlist" />
+              <StatCard label="গড় খরচ / স্পট (ভ্রমণকৃত)" value={currency(stats.avgCostVisited)} />
+            </div>
+            <p className="mt-2 text-[10px] text-[hsl(var(--ink-soft))]/70">
+              গড় খরচ / স্পট (সব): {currency(stats.avgCostAll)} · শুধু যেসব স্পটে খরচ যোগ করা আছে সেগুলো হিসাবে ধরা হয়েছে।
+            </p>
+          </section>
+
+          {/* ---------------- Transport Mode Analysis ---------------- */}
+          {stats.transportAnalysis.length > 0 && (
+            <section className="glass mt-6 rounded-xl p-4">
+              <h2 className="flex items-center gap-2 font-serif text-base text-[hsl(var(--accent-dark))]">
+                <Bus className="h-4 w-4" /> যাতায়াত মাধ্যম বিশ্লেষণ
+              </h2>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[420px] text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[hsl(var(--line))] text-[hsl(var(--ink-soft))]">
+                      <th className="py-1.5 pr-2">মাধ্যম</th>
+                      <th className="py-1.5 pr-2 text-right">মোট স্পট</th>
+                      <th className="py-1.5 pr-2 text-right">ঘুরে দেখা</th>
+                      <th className="py-1.5 pr-2 text-right">মোট খরচ (ভ্রমণকৃত)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.transportAnalysis.map((t) => (
+                      <tr key={t.mode} className="border-b border-[hsl(var(--line)/0.5)]">
+                        <td className="py-1.5 pr-2 font-semibold text-[hsl(var(--ink))]">
+                          {TRANSPORT_META[t.mode]}
+                        </td>
+                        <td className="py-1.5 pr-2 text-right">{t.total}</td>
+                        <td className="py-1.5 pr-2 text-right text-[hsl(var(--visited))]">{t.visited}</td>
+                        <td className="py-1.5 pr-2 text-right">{currency(t.totalCostVisited)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* ---------------- Upcoming trips ---------------- */}
           {stats.upcoming.length > 0 && (

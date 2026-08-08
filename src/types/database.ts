@@ -1,9 +1,18 @@
 // Matches supabase/migrations/0001_core_schema.sql, 0002_seed_divisions_districts.sql,
-// 0003_seed_categories.sql. Once the Supabase CLI is linked to the project, this can be
-// regenerated automatically with:
+// 0003_seed_categories.sql, 0004_add_budget_priority_transport.sql.
+// Once the Supabase CLI is linked to the project, this can be regenerated automatically with:
 //   npx supabase gen types typescript --project-id xaummlewqjletagnuxhu > src/types/database.ts
 
 export type PlaceStatus = 'wishlist' | 'planned' | 'visited' | 'revisited'
+export type PlacePriority = 'p1_must_visit' | 'p2_high' | 'p3_normal' | 'p4_optional'
+export type TransportMode =
+  | 'train'
+  | 'local_train'
+  | 'bus'
+  | 'local_bus'
+  | 'launch_boat'
+  | 'rickshaw_auto_cng'
+  | 'mixed'
 
 export interface Database {
   public: {
@@ -102,6 +111,9 @@ export interface Database {
           google_maps_url: string | null
           personal_rating: number | null
           target_date: string | null
+          estimated_cost: number | null
+          priority: PlacePriority | null
+          transport_mode: TransportMode | null
           created_at: string
           updated_at: string
         }
@@ -119,6 +131,9 @@ export interface Database {
           google_maps_url?: string | null
           personal_rating?: number | null
           target_date?: string | null
+          estimated_cost?: number | null
+          priority?: PlacePriority | null
+          transport_mode?: TransportMode | null
           created_at?: string
           updated_at?: string
         }
@@ -136,6 +151,9 @@ export interface Database {
           google_maps_url?: string | null
           personal_rating?: number | null
           target_date?: string | null
+          estimated_cost?: number | null
+          priority?: PlacePriority | null
+          transport_mode?: TransportMode | null
           created_at?: string
           updated_at?: string
         }
