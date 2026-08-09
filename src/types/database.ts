@@ -10,6 +10,11 @@
 // ⚠️ Same applies to profiles / likes / comments and places.is_public — applied
 // directly via the "social_features" migration on 2026-08-09, no local .sql file yet.
 //
+// ⚠️ Same applies to messages (sender_id, receiver_id, content, read_at,
+// created_at) — confirmed live on project xaummlewqjletagnuxhu with RLS +
+// realtime enabled, but was missing from this file (caused 'never' type
+// errors in use-messages.ts / messages-inbox.tsx). Added back 2026-08-09.
+//
 // Once the Supabase CLI is linked to the project, this can be regenerated automatically with:
 //   npx supabase gen types typescript --project-id xaummlewqjletagnuxhu > src/types/database.ts
 
@@ -214,6 +219,46 @@ export interface Database {
           {
             foreignKeyName: 'friendships_addressee_id_fkey'
             columns: ['addressee_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          id: string
+          sender_id: string
+          receiver_id: string
+          content: string
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sender_id: string
+          receiver_id: string
+          content: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sender_id?: string
+          receiver_id?: string
+          content?: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'messages_sender_id_fkey'
+            columns: ['sender_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'messages_receiver_id_fkey'
+            columns: ['receiver_id']
             referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
@@ -592,3 +637,7 @@ export type CommentWithProfile = Comment & {
 export type Friendship = Database['public']['Tables']['friendships']['Row']
 export type FriendshipInsert = Database['public']['Tables']['friendships']['Insert']
 export type FriendshipUpdate = Database['public']['Tables']['friendships']['Update']
+
+export type Message = Database['public']['Tables']['messages']['Row']
+export type MessageInsert = Database['public']['Tables']['messages']['Insert']
+export type MessageUpdate = Database['public']['Tables']['messages']['Update']
