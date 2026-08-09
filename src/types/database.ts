@@ -27,6 +27,7 @@ export type TransportMode =
 // Postgres enum type), so it isn't listed under Enums below — but the
 // union type is still useful at the TypeScript level.
 export type TripStatus = 'wishlist' | 'planned' | 'ongoing' | 'completed' | 'cancelled'
+export type FriendshipStatus = 'pending' | 'accepted' | 'declined' | 'blocked'
 
 export interface Database {
   public: {
@@ -174,6 +175,46 @@ export interface Database {
             foreignKeyName: 'comments_place_id_fkey'
             columns: ['place_id']
             referencedRelation: 'places'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      friendships: {
+        Row: {
+          id: string
+          requester_id: string
+          addressee_id: string
+          status: FriendshipStatus
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          requester_id: string
+          addressee_id: string
+          status?: FriendshipStatus
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          requester_id?: string
+          addressee_id?: string
+          status?: FriendshipStatus
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'friendships_requester_id_fkey'
+            columns: ['requester_id']
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'friendships_addressee_id_fkey'
+            columns: ['addressee_id']
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -528,6 +569,7 @@ export interface Database {
     Functions: Record<string, never>
     Enums: {
       place_status: PlaceStatus
+      friendship_status: FriendshipStatus
     }
   }
 }
@@ -546,3 +588,7 @@ export type CommentInsert = Database['public']['Tables']['comments']['Insert']
 export type CommentWithProfile = Comment & {
   profile: Pick<Profile, 'id' | 'username' | 'avatar_url'> | null
 }
+
+export type Friendship = Database['public']['Tables']['friendships']['Row']
+export type FriendshipInsert = Database['public']['Tables']['friendships']['Insert']
+export type FriendshipUpdate = Database['public']['Tables']['friendships']['Update']
