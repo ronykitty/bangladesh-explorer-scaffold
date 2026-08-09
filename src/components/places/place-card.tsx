@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { StatusBadge } from './status-badge'
+import { SocialActions } from './SocialActions'
 import { useAddVisit, useDeleteVisit, useDeletePlace, type PlaceWithRelations } from '@/hooks/use-places'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
 interface PlaceCardProps {
   place: PlaceWithRelations
@@ -14,6 +16,7 @@ export function PlaceCard({ place, onEdit }: PlaceCardProps) {
   const addVisit = useAddVisit()
   const deleteVisit = useDeleteVisit()
   const deletePlace = useDeletePlace()
+  const { userId } = useCurrentUser()
 
   const borderColor =
     place.status === 'visited' || place.status === 'revisited'
@@ -144,6 +147,8 @@ export function PlaceCard({ place, onEdit }: PlaceCardProps) {
           </button>
         </div>
       )}
+
+      <SocialActions placeId={place.id} currentUserId={userId} />
     </div>
   )
 }
