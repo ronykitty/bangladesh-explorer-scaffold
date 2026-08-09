@@ -1,69 +1,92 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from '@/components/theme/theme-provider'
-import { AuthProvider } from '@/lib/auth-context'
-import { AppLayout } from '@/components/layout/app-layout'
-import { ProtectedRoute } from '@/components/auth/protected-route'
-import { PublicOnlyRoute } from '@/components/auth/public-only-route'
+// src/pages/set-username.tsx
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
-import DashboardPage from '@/routes/dashboard'
-import PlacesPage from '@/routes/places'
-import CategoryPage from '@/routes/category'
-import GalleryPage from '@/routes/gallery'
-import WishlistPage from '@/routes/wishlist'
-import PlannerPage from '@/routes/planner'
-import JournalPage from '@/routes/journal'
-import SettingsPage from '@/routes/settings'
-import LoginPage from '@/routes/auth/login'
-import SignupPage from '@/routes/auth/signup'
-import ForgotPasswordPage from '@/routes/auth/forgot-password'
-import ResetPasswordPage from '@/routes/auth/reset-password'
-import ProfilePage from '@/routes/profile'
-import FriendsPage from '@/routes/friends'
+// শুধু ছোট হাতের অক্ষর, সংখ্যা, আন্ডারস্কোর — ৩ থেকে ২০ ক্যারেক্টার
+const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-    },
-  },
-})
+export default function SetUsernamePage() {
+  const { userId, loading } = useCurrentUser()
+  const navigate = useNavigate()
 
-export default function App() {
+  const [value, setValue] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (loading) return null
+
+  if (!userId) {
+    // লগইন করা নেই — এই পেজে থাকার কথাই না
+    navigate('/login', { replace: true })
+    return null
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    if (!userId) return // TS-কে জানানো এবং রানটাইমেও নিরাপদ থাকা, দুটোই দরকার
+
+    const username = value.trim().toLowerCase()
+
+    if (!USERNAME_REGEX.test(username)) {
+      setError('ইউজারনেমে শুধু ছোট হাতের অক্ষর, সংখ্যা ও আন্ডারস্কোর ব্যবহার করা যাবে (৩–২০ ক্যারেক্টার)।')
+      return
+    }
+
+    setSubmitting(true)
+
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({ id: userId, username }, { onConflict: 'id' })
+
+    setSubmitting(false)
+
+    if (upsertError) {
+      // profiles.username টেবিলে unique constraint আছে —
+      // ইউনিক ভায়োলেশন হলে Postgres error code 23505 আসে
+      if (upsertError.code === '23505') {
+        setError('এই ইউজারনেমটি ইতিমধ্যে নেওয়া হয়ে গেছে। অন্য একটা চেষ্টা করুন।')
+      } else {
+        setError('ইউজারনেম সেভ করা যায়নি। আবার চেষ্টা করুন।')
+        console.error('username upsert failed:', upsertError.message)
+      }
+      return
+    }
+
+    navigate('/dashboard', { replace: true })
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              {/* Password recovery lands here directly from the emailed link */}
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <div className="mx-auto mt-16 max-w-sm">
+      <h1 className="text-xl font-semibold">একটা ইউজারনেম বেছে নিন</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        এটা দিয়েই আপনার প্রোফাইল লিংক তৈরি হবে (/profile/আপনার-ইউজারনেম), পরে বদলানো যাবে।
+      </p>
 
-              <Route element={<PublicOnlyRoute />}>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              </Route>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-3">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="username"
+          autoFocus
+          disabled={submitting}
+          className="w-full rounded-md border px-3 py-2 text-sm"
+        />
 
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  <Route index element={<DashboardPage />} />
-                  <Route path="places" element={<PlacesPage />} />
-                  <Route path="category/:slug" element={<CategoryPage />} />
-                  <Route path="gallery" element={<GalleryPage />} />
-                  <Route path="wishlist" element={<WishlistPage />} />
-                  <Route path="planner" element={<PlannerPage />} />
-                  <Route path="journal" element={<JournalPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="profile/:username" element={<ProfilePage />} />
-                  <Route path="friends" element={<FriendsPage />} />
-                </Route>
-              </Route>
-            </Routes>
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </QueryClientProvider>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting || value.trim().length === 0}
+          className="w-full rounded-md bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {submitting ? 'সেভ হচ্ছে...' : 'কনফার্ম করুন'}
+        </button>
+      </form>
+    </div>
   )
 }
