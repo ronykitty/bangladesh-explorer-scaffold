@@ -1,42 +1,111 @@
-// Matches supabase/migrations/0001_core_schema.sql, 0002_seed_divisions_districts.sql,
-// 0003_seed_categories.sql, 0004_add_budget_priority_transport.sql,
-// and the Phase 2 tables (upazilas, trips, expenses, expense_categories,
-// trip_places) confirmed live on project xaummlewqjletagnuxhu as of 2026-08-09.
-// ⚠️ No migration file exists yet in this repo for the Phase 2 tables — they
-// were created directly against the DB in an earlier session. If you use
-// `supabase db diff` / migration-based workflows, pull a migration for them
-// before your next deploy so the migration history stays in sync with the DB.
-//
-// ⚠️ Same applies to profiles / likes / comments and places.is_public — applied
-// directly via the "social_features" migration on 2026-08-09, no local .sql file yet.
-//
-// ⚠️ Same applies to messages (sender_id, receiver_id, content, read_at,
-// created_at) — confirmed live on project xaummlewqjletagnuxhu with RLS +
-// realtime enabled, but was missing from this file (caused 'never' type
-// errors in use-messages.ts / messages-inbox.tsx). Added back 2026-08-09.
-//
-// Once the Supabase CLI is linked to the project, this can be regenerated automatically with:
-//   npx supabase gen types typescript --project-id xaummlewqjletagnuxhu > src/types/database.ts
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export type PlaceStatus = 'wishlist' | 'planned' | 'visited' | 'revisited'
-export type PlacePriority = 'p1_must_visit' | 'p2_high' | 'p3_normal' | 'p4_optional'
-export type TransportMode =
-  | 'train'
-  | 'local_train'
-  | 'bus'
-  | 'local_bus'
-  | 'launch_boat'
-  | 'rickshaw_auto_cng'
-  | 'mixed'
-// trips.status is a plain text column with a CHECK constraint (not a
-// Postgres enum type), so it isn't listed under Enums below — but the
-// union type is still useful at the TypeScript level.
-export type TripStatus = 'wishlist' | 'planned' | 'ongoing' | 'completed' | 'cancelled'
-export type FriendshipStatus = 'pending' | 'accepted' | 'declined' | 'blocked'
-
-export interface Database {
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "14.15"
+  }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          icon: string
+          id: string
+          is_active: boolean
+          name_bn: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name_bn: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name_bn?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          place_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          place_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          place_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      districts: {
+        Row: {
+          division_id: string
+          id: string
+          name_bn: string
+          name_en: string
+          slug: string
+        }
+        Insert: {
+          division_id: string
+          id?: string
+          name_bn: string
+          name_en: string
+          slug: string
+        }
+        Update: {
+          division_id?: string
+          id?: string
+          name_bn?: string
+          name_en?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "districts_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       divisions: {
         Row: {
           id: string
@@ -61,583 +130,606 @@ export interface Database {
         }
         Relationships: []
       }
-      districts: {
+      expense_categories: {
         Row: {
+          icon: string
           id: string
-          division_id: string
+          is_active: boolean
           name_bn: string
           name_en: string
-          slug: string
+          sort_order: number
         }
         Insert: {
+          icon?: string
           id?: string
-          division_id: string
+          is_active?: boolean
           name_bn: string
           name_en: string
-          slug: string
+          sort_order?: number
         }
         Update: {
+          icon?: string
           id?: string
-          division_id?: string
+          is_active?: boolean
           name_bn?: string
           name_en?: string
-          slug?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'districts_division_id_fkey'
-            columns: ['division_id']
-            referencedRelation: 'divisions'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          id: string
-          username: string | null
-          full_name: string | null
-          avatar_url: string | null
-          bio: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          username?: string | null
-          full_name?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          username?: string | null
-          full_name?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string
-          updated_at?: string
+          sort_order?: number
         }
         Relationships: []
       }
-      likes: {
+      expenses: {
         Row: {
-          id: string
-          user_id: string
-          place_id: string
+          amount: number
           created_at: string
+          description: string | null
+          expense_category_id: string
+          expense_date: string
+          id: string
+          note: string | null
+          payment_method: string | null
+          receipt_photo_url: string | null
+          trip_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          place_id: string
+          amount: number
           created_at?: string
+          description?: string | null
+          expense_category_id: string
+          expense_date: string
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          receipt_photo_url?: string | null
+          trip_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          place_id?: string
+          amount?: number
           created_at?: string
+          description?: string | null
+          expense_category_id?: string
+          expense_date?: string
+          id?: string
+          note?: string | null
+          payment_method?: string | null
+          receipt_photo_url?: string | null
+          trip_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'likes_place_id_fkey'
-            columns: ['place_id']
-            referencedRelation: 'places'
-            referencedColumns: ['id']
+            foreignKeyName: "expenses_expense_category_id_fkey"
+            columns: ["expense_category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
           },
-        ]
-      }
-      comments: {
-        Row: {
-          id: string
-          user_id: string
-          place_id: string
-          content: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          place_id: string
-          content: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          place_id?: string
-          content?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: 'comments_place_id_fkey'
-            columns: ['place_id']
-            referencedRelation: 'places'
-            referencedColumns: ['id']
+            foreignKeyName: "expenses_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
           },
         ]
       }
       friendships: {
         Row: {
+          addressee_id: string
+          created_at: string
           id: string
           requester_id: string
-          addressee_id: string
-          status: FriendshipStatus
-          created_at: string
+          status: Database["public"]["Enums"]["friendship_status"]
           updated_at: string
         }
         Insert: {
+          addressee_id: string
+          created_at?: string
           id?: string
           requester_id: string
-          addressee_id: string
-          status?: FriendshipStatus
-          created_at?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
           updated_at?: string
         }
         Update: {
+          addressee_id?: string
+          created_at?: string
           id?: string
           requester_id?: string
-          addressee_id?: string
-          status?: FriendshipStatus
-          created_at?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'friendships_requester_id_fkey'
-            columns: ['requester_id']
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            foreignKeyName: "friendships_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'friendships_addressee_id_fkey'
-            columns: ['addressee_id']
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
+            foreignKeyName: "friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          place_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          place_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          place_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
           },
         ]
       }
       messages: {
         Row: {
-          id: string
-          sender_id: string
-          receiver_id: string
           content: string
-          read_at: string | null
           created_at: string
-        }
-        Insert: {
-          id?: string
-          sender_id: string
+          id: string
+          read_at: string | null
           receiver_id: string
+          sender_id: string
+        }
+        Insert: {
           content: string
-          read_at?: string | null
           created_at?: string
+          id?: string
+          read_at?: string | null
+          receiver_id: string
+          sender_id: string
         }
         Update: {
-          id?: string
-          sender_id?: string
-          receiver_id?: string
           content?: string
-          read_at?: string | null
           created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'messages_sender_id_fkey'
-            columns: ['sender_id']
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'messages_receiver_id_fkey'
-            columns: ['receiver_id']
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      upazilas: {
-        Row: {
-          id: string
-          district_id: string
-          name_en: string
-          name_bn: string | null
-          slug: string
-        }
-        Insert: {
           id?: string
-          district_id: string
-          name_en: string
-          name_bn?: string | null
-          slug: string
-        }
-        Update: {
-          id?: string
-          district_id?: string
-          name_en?: string
-          name_bn?: string | null
-          slug?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'upazilas_district_id_fkey'
-            columns: ['district_id']
-            referencedRelation: 'districts'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      categories: {
-        Row: {
-          id: string
-          name_bn: string
-          slug: string
-          icon: string
-          sort_order: number
-        }
-        Insert: {
-          id?: string
-          name_bn: string
-          slug: string
-          icon?: string
-          sort_order?: number
-        }
-        Update: {
-          id?: string
-          name_bn?: string
-          slug?: string
-          icon?: string
-          sort_order?: number
+          read_at?: string | null
+          receiver_id?: string
+          sender_id?: string
         }
         Relationships: []
       }
       places: {
         Row: {
-          id: string
-          user_id: string
           category_id: string
+          created_at: string
+          description: string | null
           district_id: string
+          estimated_cost: number | null
+          google_maps_url: string | null
+          id: string
+          is_public: boolean
+          name: string
+          personal_rating: number | null
+          photo_url: string | null
+          priority: string | null
+          status: Database["public"]["Enums"]["place_status"]
+          target_date: string | null
+          transport_mode: string | null
+          union_village: string | null
           upazila_id: string | null
           upazila_name: string | null
-          union_village: string | null
-          name: string
-          description: string | null
-          status: PlaceStatus
-          photo_url: string | null
-          google_maps_url: string | null
-          personal_rating: number | null
-          target_date: string | null
-          estimated_cost: number | null
-          priority: PlacePriority | null
-          transport_mode: TransportMode | null
-          is_public: boolean
-          created_at: string
           updated_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           category_id: string
+          created_at?: string
+          description?: string | null
           district_id: string
+          estimated_cost?: number | null
+          google_maps_url?: string | null
+          id?: string
+          is_public?: boolean
+          name: string
+          personal_rating?: number | null
+          photo_url?: string | null
+          priority?: string | null
+          status?: Database["public"]["Enums"]["place_status"]
+          target_date?: string | null
+          transport_mode?: string | null
+          union_village?: string | null
           upazila_id?: string | null
           upazila_name?: string | null
-          union_village?: string | null
-          name: string
-          description?: string | null
-          status?: PlaceStatus
-          photo_url?: string | null
-          google_maps_url?: string | null
-          personal_rating?: number | null
-          target_date?: string | null
-          estimated_cost?: number | null
-          priority?: PlacePriority | null
-          transport_mode?: TransportMode | null
-          is_public?: boolean
-          created_at?: string
           updated_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           category_id?: string
+          created_at?: string
+          description?: string | null
           district_id?: string
+          estimated_cost?: number | null
+          google_maps_url?: string | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          personal_rating?: number | null
+          photo_url?: string | null
+          priority?: string | null
+          status?: Database["public"]["Enums"]["place_status"]
+          target_date?: string | null
+          transport_mode?: string | null
+          union_village?: string | null
           upazila_id?: string | null
           upazila_name?: string | null
-          union_village?: string | null
-          name?: string
-          description?: string | null
-          status?: PlaceStatus
-          photo_url?: string | null
-          google_maps_url?: string | null
-          personal_rating?: number | null
-          target_date?: string | null
-          estimated_cost?: number | null
-          priority?: PlacePriority | null
-          transport_mode?: TransportMode | null
-          is_public?: boolean
-          created_at?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'places_category_id_fkey'
-            columns: ['category_id']
-            referencedRelation: 'categories'
-            referencedColumns: ['id']
+            foreignKeyName: "places_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'places_district_id_fkey'
-            columns: ['district_id']
-            referencedRelation: 'districts'
-            referencedColumns: ['id']
+            foreignKeyName: "places_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'places_upazila_id_fkey'
-            columns: ['upazila_id']
-            referencedRelation: 'upazilas'
-            referencedColumns: ['id']
+            foreignKeyName: "places_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      trip_places: {
+        Row: {
+          place_id: string
+          trip_id: string
+        }
+        Insert: {
+          place_id: string
+          trip_id: string
+        }
+        Update: {
+          place_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_places_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_places_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          created_at: string
+          district_id: string | null
+          division_id: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+          status: string
+          title: string
+          upazila_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          district_id?: string | null
+          division_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          title: string
+          upazila_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          district_id?: string | null
+          division_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          upazila_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_upazila_id_fkey"
+            columns: ["upazila_id"]
+            isOneToOne: false
+            referencedRelation: "upazilas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upazilas: {
+        Row: {
+          district_id: string
+          id: string
+          name_bn: string | null
+          name_en: string
+          slug: string
+        }
+        Insert: {
+          district_id: string
+          id?: string
+          name_bn?: string | null
+          name_en: string
+          slug: string
+        }
+        Update: {
+          district_id?: string
+          id?: string
+          name_bn?: string | null
+          name_en?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upazilas_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
+            referencedColumns: ["id"]
           },
         ]
       }
       visits: {
         Row: {
+          created_at: string
           id: string
+          note: string | null
           place_id: string
           visit_date: string
-          note: string | null
-          created_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
+          note?: string | null
           place_id: string
           visit_date: string
-          note?: string | null
-          created_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
+          note?: string | null
           place_id?: string
           visit_date?: string
-          note?: string | null
-          created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'visits_place_id_fkey'
-            columns: ['place_id']
-            referencedRelation: 'places'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      expense_categories: {
-        Row: {
-          id: string
-          name_bn: string
-          name_en: string
-          icon: string
-          sort_order: number
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          name_bn: string
-          name_en: string
-          icon?: string
-          sort_order?: number
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          name_bn?: string
-          name_en?: string
-          icon?: string
-          sort_order?: number
-          is_active?: boolean
-        }
-        Relationships: []
-      }
-      trips: {
-        Row: {
-          id: string
-          user_id: string
-          title: string
-          status: TripStatus
-          start_date: string | null
-          end_date: string | null
-          division_id: string | null
-          district_id: string | null
-          upazila_id: string | null
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title: string
-          status?: TripStatus
-          start_date?: string | null
-          end_date?: string | null
-          division_id?: string | null
-          district_id?: string | null
-          upazila_id?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          status?: TripStatus
-          start_date?: string | null
-          end_date?: string | null
-          division_id?: string | null
-          district_id?: string | null
-          upazila_id?: string | null
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'trips_division_id_fkey'
-            columns: ['division_id']
-            referencedRelation: 'divisions'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'trips_district_id_fkey'
-            columns: ['district_id']
-            referencedRelation: 'districts'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'trips_upazila_id_fkey'
-            columns: ['upazila_id']
-            referencedRelation: 'upazilas'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      expenses: {
-        Row: {
-          id: string
-          trip_id: string
-          expense_category_id: string
-          expense_date: string
-          amount: number
-          description: string | null
-          payment_method: string | null
-          note: string | null
-          receipt_photo_url: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          trip_id: string
-          expense_category_id: string
-          expense_date: string
-          amount: number
-          description?: string | null
-          payment_method?: string | null
-          note?: string | null
-          receipt_photo_url?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          trip_id?: string
-          expense_category_id?: string
-          expense_date?: string
-          amount?: number
-          description?: string | null
-          payment_method?: string | null
-          note?: string | null
-          receipt_photo_url?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'expenses_trip_id_fkey'
-            columns: ['trip_id']
-            referencedRelation: 'trips'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'expenses_expense_category_id_fkey'
-            columns: ['expense_category_id']
-            referencedRelation: 'expense_categories'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      trip_places: {
-        Row: {
-          trip_id: string
-          place_id: string
-        }
-        Insert: {
-          trip_id: string
-          place_id: string
-        }
-        Update: {
-          trip_id?: string
-          place_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'trip_places_trip_id_fkey'
-            columns: ['trip_id']
-            referencedRelation: 'trips'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'trip_places_place_id_fkey'
-            columns: ['place_id']
-            referencedRelation: 'places'
-            referencedColumns: ['id']
+            foreignKeyName: "visits_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
           },
         ]
       }
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
     Enums: {
-      place_status: PlaceStatus
-      friendship_status: FriendshipStatus
+      friendship_status: "pending" | "accepted" | "declined" | "blocked"
+      place_status: "wishlist" | "planned" | "visited" | "revisited"
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
 
-// Convenience aliases for the social-feature tables
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Like = Database['public']['Tables']['likes']['Row']
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Comment = Database['public']['Tables']['comments']['Row']
-export type CommentInsert = Database['public']['Tables']['comments']['Insert']
-
-// Comment joined with its author's public profile fields (used by useComments)
-export type CommentWithProfile = Comment & {
-  profile: Pick<Profile, 'id' | 'username' | 'avatar_url'> | null
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type Friendship = Database['public']['Tables']['friendships']['Row']
-export type FriendshipInsert = Database['public']['Tables']['friendships']['Insert']
-export type FriendshipUpdate = Database['public']['Tables']['friendships']['Update']
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type Message = Database['public']['Tables']['messages']['Row']
-export type MessageInsert = Database['public']['Tables']['messages']['Insert']
-export type MessageUpdate = Database['public']['Tables']['messages']['Update']
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      friendship_status: ["pending", "accepted", "declined", "blocked"],
+      place_status: ["wishlist", "planned", "visited", "revisited"],
+    },
+  },
+} as const
