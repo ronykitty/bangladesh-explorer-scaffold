@@ -1,5 +1,5 @@
 // src/pages/set-username.tsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -15,13 +15,17 @@ export default function SetUsernamePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (loading) return null
+  // লগইন করা নেই — এই পেজে থাকার কথাই না। navigate() render-এর সময় না,
+  // effect-এর ভেতর কল করা হচ্ছে যাতে "Cannot update a component while
+  // rendering a different component" জাতীয় ওয়ার্নিং না আসে।
+  useEffect(() => {
+    if (!loading && !userId) {
+      navigate('/login', { replace: true })
+    }
+  }, [loading, userId, navigate])
 
-  if (!userId) {
-    // লগইন করা নেই — এই পেজে থাকার কথাই না
-    navigate('/login', { replace: true })
-    return null
-  }
+  if (loading) return null
+  if (!userId) return null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
