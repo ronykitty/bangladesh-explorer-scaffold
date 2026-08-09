@@ -27,6 +27,8 @@ export default function SetUsernamePage() {
     e.preventDefault()
     setError(null)
 
+    if (!userId) return // TS-কে জানানো এবং রানটাইমেও নিরাপদ থাকা, দুটোই দরকার
+
     const username = value.trim().toLowerCase()
 
     if (!USERNAME_REGEX.test(username)) {
