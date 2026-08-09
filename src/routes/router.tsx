@@ -21,6 +21,8 @@ import PlacesPage from '@/routes/places'
 import PlannerPage from '@/routes/planner'
 import SettingsPage from '@/routes/settings'
 import WishlistPage from '@/routes/wishlist'
+import FindFriendsPage from '@/routes/find-friends'
+import CategoryManagePage from '@/routes/category-manage'
 
 export const router = createBrowserRouter([
   // --- auth: standalone, outside AppLayout (no sidebar on these) ---
@@ -36,13 +38,15 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },           // '/'
       { path: 'places', element: <PlacesPage /> },            // '/places'
-      { path: 'category/:slug', element: <CategoryPage /> },  // '/category/heritage' etc.
       { path: 'gallery', element: <GalleryPage /> },          // '/gallery'
       { path: 'wishlist', element: <WishlistPage /> },        // '/wishlist'
       { path: 'planner', element: <PlannerPage /> },          // '/planner'
       { path: 'journal', element: <JournalPage /> },          // '/journal'
       { path: 'settings', element: <SettingsPage /> },        // '/settings'
       { path: 'friends', element: <FriendsPage /> },          // '/friends' (not in sidebar yet, but page exists)
+      { path: 'find-friends', element: <FindFriendsPage /> }, // '/find-friends'
+      { path: 'category/manage', element: <CategoryManagePage /> }, // '/category/manage' — must come before 'category/:slug' below
+      { path: 'category/:slug', element: <CategoryPage /> },  // '/category/heritage' etc.
       { path: 'profile/:username', element: <ProfilePage /> }, // '/profile/:username'
     ],
   },

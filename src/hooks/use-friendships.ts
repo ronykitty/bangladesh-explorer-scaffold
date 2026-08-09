@@ -1,33 +1,150 @@
 // src/hooks/use-friendships.ts
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useCurrentUser } from '@/hooks/use-current-user'
 
-type ProfileLite = {
-  id: string
-  username: string | null
-  full_name: string | null
-  avatar_url: string | null
-}
+type FriendshipStatus = 'pending' | 'accepted' | 'declined' | 'blocked'
 
 type FriendshipRow = {
   id: string
   requester_id: string
   addressee_id: string
-  status: 'pending' | 'accepted' | 'declined' | 'blocked'
+  status: FriendshipStatus
   created_at: string
+  updated_at: string
 }
 
-// ---------- ইউজার সার্চ (username / full_name দিয়ে) ----------
+/**
+ * বর্তমান ইউজারের সব friendship রো লোড করে, এবং accepted/incoming-pending/
+ * outgoing-pending — এই ৩ ভাগে ভাগ করে দেয়। রিয়েলটাইম সাবস্ক্রিপশনও আছে,
+ * যাতে অন্য পক্ষ accept/decline করলে সাথে সাথে UI আপডেট হয়।
+ */
+export function useFriendships() {
+  const { userId } = useCurrentUser()
+  const [rows, setRows] = useState<FriendshipRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!userId) {
+      setRows([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('friendships')
+      .select('*')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+
+    if (error) {
+      console.error('friendships fetch failed:', error.message)
+    } else {
+      setRows(data ?? [])
+    }
+    setLoading(false)
+  }, [userId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel('friendships-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships' },
+        () => load()
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId, load])
+
+  const accepted = useMemo(() => rows.filter((r) => r.status === 'accepted'), [rows])
+  const incomingPending = useMemo(
+    () => rows.filter((r) => r.status === 'pending' && r.addressee_id === userId),
+    [rows, userId]
+  )
+  const outgoingPending = useMemo(
+    () => rows.filter((r) => r.status === 'pending' && r.requester_id === userId),
+    [rows, userId]
+  )
+
+  // একটা নির্দিষ্ট ইউজারের সাথে সম্পর্কের অবস্থা জানার জন্য (find-friends পেজে দরকার)
+  const statusWith = useCallback(
+    (otherUserId: string) => rows.find((r) => r.requester_id === otherUserId || r.addressee_id === otherUserId),
+    [rows]
+  )
+
+  const sendRequest = useCallback(
+    async (addresseeId: string) => {
+      if (!userId) return
+      const { error } = await supabase
+        .from('friendships')
+        .insert({ requester_id: userId, addressee_id: addresseeId, status: 'pending' })
+      if (error) {
+        console.error('send friend request failed:', error.message)
+        return
+      }
+      await load()
+    },
+    [userId, load]
+  )
+
+  const respondToRequest = useCallback(
+    async (friendshipId: string, status: 'accepted' | 'declined') => {
+      const { error } = await supabase.from('friendships').update({ status }).eq('id', friendshipId)
+      if (error) {
+        console.error('respond to request failed:', error.message)
+        return
+      }
+      await load()
+    },
+    [load]
+  )
+
+  const removeFriendship = useCallback(
+    async (friendshipId: string) => {
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
+      if (error) {
+        console.error('remove friendship failed:', error.message)
+        return
+      }
+      await load()
+    },
+    [load]
+  )
+
+  return {
+    accepted,
+    incomingPending,
+    outgoingPending,
+    statusWith,
+    sendRequest,
+    respondToRequest,
+    removeFriendship,
+    loading,
+  }
+}
+
+/**
+ * ইউজারনেম/নাম দিয়ে অন্য ইউজার সার্চ করার হুক (find-friends পেজে দরকার)।
+ * নিজেকে রেজাল্টে বাদ দেয়।
+ */
 export function useUserSearch() {
   const { userId } = useCurrentUser()
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<ProfileLite[]>([])
+  const [results, setResults] = useState<
+    { id: string; username: string | null; full_name: string | null; avatar_url: string | null }[]
+  >([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const term = query.trim()
-    if (term.length < 2) {
+    const trimmed = query.trim()
+    if (trimmed.length < 2) {
       setResults([])
       return
     }
@@ -39,7 +156,7 @@ export function useUserSearch() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, avatar_url')
-        .or(`username.ilike.%${term}%,full_name.ilike.%${term}%`)
+        .or(`username.ilike.%${trimmed}%,full_name.ilike.%${trimmed}%`)
         .neq('id', userId ?? '')
         .limit(20)
 
@@ -60,87 +177,4 @@ export function useUserSearch() {
   }, [query, userId])
 
   return { query, setQuery, results, loading }
-}
-
-// ---------- ফ্রেন্ডশিপ ম্যানেজমেন্ট ----------
-export function useFriendships() {
-  const { userId } = useCurrentUser()
-  const [rows, setRows] = useState<FriendshipRow[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const reload = useCallback(async () => {
-    if (!userId) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('friendships')
-      .select('id, requester_id, addressee_id, status, created_at')
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-
-    if (error) {
-      console.error('friendships fetch failed:', error.message)
-    } else {
-      setRows(data ?? [])
-    }
-    setLoading(false)
-  }, [userId])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
-
-  // অন্য ইউজারের সাথে বর্তমান সম্পর্কের অবস্থা (নিজে থেকে None হলে undefined)
-  function statusWith(otherUserId: string) {
-    return rows.find(
-      (r) => r.requester_id === otherUserId || r.addressee_id === otherUserId
-    )
-  }
-
-  async function sendRequest(addresseeId: string) {
-    if (!userId) return
-    const { error } = await supabase
-      .from('friendships')
-      .insert({ requester_id: userId, addressee_id: addresseeId, status: 'pending' })
-    if (error) {
-      console.error('send friend request failed:', error.message)
-      throw error
-    }
-    await reload()
-  }
-
-  async function respondToRequest(friendshipId: string, status: 'accepted' | 'declined') {
-    const { error } = await supabase
-      .from('friendships')
-      .update({ status })
-      .eq('id', friendshipId)
-    if (error) {
-      console.error('respond to friend request failed:', error.message)
-      throw error
-    }
-    await reload()
-  }
-
-  async function removeFriendship(friendshipId: string) {
-    const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
-    if (error) {
-      console.error('remove friendship failed:', error.message)
-      throw error
-    }
-    await reload()
-  }
-
-  const accepted = rows.filter((r) => r.status === 'accepted')
-  const incomingPending = rows.filter((r) => r.status === 'pending' && r.addressee_id === userId)
-  const outgoingPending = rows.filter((r) => r.status === 'pending' && r.requester_id === userId)
-
-  return {
-    loading,
-    accepted,
-    incomingPending,
-    outgoingPending,
-    statusWith,
-    sendRequest,
-    respondToRequest,
-    removeFriendship,
-    reload,
-  }
 }
