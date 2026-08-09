@@ -19,6 +19,7 @@ import SignupPage from '@/routes/auth/signup'
 import ForgotPasswordPage from '@/routes/auth/forgot-password'
 import ResetPasswordPage from '@/routes/auth/reset-password'
 import ProfilePage from '@/routes/profile'
+import FriendsPage from '@/routes/friends'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ export default function App() {
                   <Route path="journal" element={<JournalPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="profile/:username" element={<ProfilePage />} />
+                  <Route path="friends" element={<FriendsPage />} />
                 </Route>
               </Route>
             </Routes>

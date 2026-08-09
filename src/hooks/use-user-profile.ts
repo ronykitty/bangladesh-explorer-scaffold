@@ -1,5 +1,5 @@
 // src/hooks/use-user-profile.ts
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/types/database'
 
@@ -23,61 +23,59 @@ export function useUserProfile(username: string | undefined) {
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!username) return
-    const safeUsername = username
-    let cancelled = false
+    setLoading(true)
+    setError(null)
+    setNotFound(false)
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-      setNotFound(false)
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', username)
+      .maybeSingle()
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', safeUsername)
-        .maybeSingle()
-
-      if (cancelled) return
-
-      if (profileError) {
-        setError(profileError.message)
-        setLoading(false)
-        return
-      }
-      if (!profileData) {
-        setNotFound(true)
-        setLoading(false)
-        return
-      }
-      setProfile(profileData as Profile)
-
-      // RLS আপনা-আপনি ফিল্টার করবে: is_public = true অথবা এটা নিজের প্রোফাইল হলে সব
-      const { data: placesData, error: placesError } = await supabase
-        .from('places')
-        .select(
-          `id, name, description, status, photo_url, personal_rating,
-           category:categories(name_bn, icon, slug),
-           district:districts(name_bn),
-           visits(id, visit_date, note)`
-        )
-        .eq('user_id', profileData.id)
-        .order('created_at', { ascending: false })
-
-      if (cancelled) return
-
-      if (placesError) setError(placesError.message)
-      else setPlaces((placesData as unknown as ProfilePlace[]) ?? [])
-
+    if (profileError) {
+      setError(profileError.message)
       setLoading(false)
+      return
     }
+    if (!profileData) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+    setProfile(profileData as Profile)
 
-    load()
+    // RLS আপনা-আপনি ফিল্টার করবে: is_public = true অথবা এটা নিজের প্রোফাইল হলে সব
+    const { data: placesData, error: placesError } = await supabase
+      .from('places')
+      .select(
+        `id, name, description, status, photo_url, personal_rating,
+         category:categories(name_bn, icon, slug),
+         district:districts(name_bn),
+         visits(id, visit_date, note)`
+      )
+      .eq('user_id', profileData.id)
+      .order('created_at', { ascending: false })
+
+    if (placesError) setError(placesError.message)
+    else setPlaces((placesData as unknown as ProfilePlace[]) ?? [])
+
+    setLoading(false)
+  }, [username])
+
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      if (cancelled) return
+      await load()
+    }
+    run()
     return () => {
       cancelled = true
     }
-  }, [username])
+  }, [load])
 
   const wishlist = useMemo(() => places.filter((p) => p.status === 'wishlist' || p.status === 'planned'), [places])
   const visited = useMemo(() => places.filter((p) => p.status === 'visited' || p.status === 'revisited'), [places])
@@ -101,6 +99,7 @@ export function useUserProfile(username: string | undefined) {
     avgRating,
     wishlistByCategory,
     visitedByCategory,
+    refetch: load,
   }
 }
 

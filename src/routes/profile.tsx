@@ -1,9 +1,11 @@
 // src/routes/profile.tsx
-import { useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Loader2, MapPin, Star } from 'lucide-react'
 import { useUserProfile, type ProfilePlace } from '@/hooks/use-user-profile'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { AvatarUploader } from '@/components/profile/AvatarUploader'
+import { ProfileEditForm } from '@/components/profile/ProfileEditForm'
 import { SocialActions } from '@/components/places/SocialActions'
 import { PageHeader } from '@/components/layout/page-header'
 
@@ -43,7 +45,9 @@ function MiniPlaceCard({ place, currentUserId }: { place: ProfilePlace; currentU
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>()
+  const navigate = useNavigate()
   const { userId } = useCurrentUser()
+  const [editing, setEditing] = useState(false)
   const {
     profile,
     loading,
@@ -54,6 +58,7 @@ export default function ProfilePage() {
     avgRating,
     wishlistByCategory,
     visitedByCategory,
+    refetch,
   } = useUserProfile(username)
 
   const isOwnProfile = !!profile && profile.id === userId
@@ -81,7 +86,39 @@ export default function ProfilePage() {
       {/* ---------------- Profile header ---------------- */}
       <section className="glass mt-4 rounded-xl p-4">
         {isOwnProfile ? (
-          <AvatarUploader userId={profile.id} />
+          <div className="flex flex-col items-center gap-3 p-4">
+            <AvatarUploader userId={profile.id} />
+
+            {!editing ? (
+              <>
+                {profile.bio && (
+                  <p className="max-w-sm text-center text-sm text-[hsl(var(--ink-soft))]">{profile.bio}</p>
+                )}
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs font-medium text-[hsl(var(--accent-dark))]"
+                >
+                  ✏️ প্রোফাইল এডিট করুন
+                </button>
+              </>
+            ) : (
+              <div className="w-full">
+                <ProfileEditForm
+                  profile={profile}
+                  onCancel={() => setEditing(false)}
+                  onSaved={async (updated) => {
+                    setEditing(false)
+                    if (updated.username && updated.username !== username) {
+                      // ইউজারনেম বদলালে নতুন URL-এ নিয়ে যাওয়া, যেহেতু রুট /profile/:username
+                      navigate(`/profile/${updated.username}`, { replace: true })
+                    } else {
+                      await refetch()
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-3 p-4">
             <img
