@@ -25,6 +25,7 @@ export function useUserProfile(username: string | undefined) {
 
   useEffect(() => {
     if (!username) return
+    const safeUsername = username
     let cancelled = false
 
     async function load() {
@@ -35,7 +36,7 @@ export function useUserProfile(username: string | undefined) {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('username', username)
+        .eq('username', safeUsername)
         .maybeSingle()
 
       if (cancelled) return

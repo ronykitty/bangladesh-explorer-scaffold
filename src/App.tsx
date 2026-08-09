@@ -18,6 +18,7 @@ import LoginPage from '@/routes/auth/login'
 import SignupPage from '@/routes/auth/signup'
 import ForgotPasswordPage from '@/routes/auth/forgot-password'
 import ResetPasswordPage from '@/routes/auth/reset-password'
+import ProfilePage from '@/routes/profile'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +55,7 @@ export default function App() {
                   <Route path="planner" element={<PlannerPage />} />
                   <Route path="journal" element={<JournalPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="profile/:username" element={<ProfilePage />} />
                 </Route>
               </Route>
             </Routes>
