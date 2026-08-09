@@ -93,7 +93,7 @@ export function SearchableSelect({
   }
 
   const baseButtonClasses =
-    'flex w-full items-center justify-between gap-2 rounded-lg border border-[hsl(var(--line))] bg-white/70 px-3 py-2 text-left text-sm outline-none transition-colors focus:border-[hsl(var(--accent))] focus:ring-2 focus:ring-[hsl(var(--accent)/0.25)] disabled:cursor-not-allowed disabled:opacity-60'
+    'flex w-full items-center justify-between gap-2 rounded-xl border-2 border-[hsl(var(--line))] bg-white/80 px-3.5 py-2.5 text-left text-base outline-none transition-colors focus:border-[hsl(var(--accent))] focus:ring-4 focus:ring-[hsl(var(--accent)/0.15)] disabled:cursor-not-allowed disabled:opacity-60'
 
   return (
     <div ref={containerRef} className="relative">
@@ -127,21 +127,21 @@ export function SearchableSelect({
       </button>
 
       {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-[hsl(var(--line))] bg-white shadow-lg">
-          <div className="flex items-center gap-2 border-b border-[hsl(var(--line))] px-2.5 py-2">
-            <Search className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--ink-soft))]" />
+        <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border-2 border-[hsl(var(--line))] bg-white shadow-lg">
+          <div className="flex items-center gap-2 border-b border-[hsl(var(--line))] px-3 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-[hsl(var(--ink-soft))]" />
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-[hsl(var(--ink-soft))]"
+              className="w-full bg-transparent text-base outline-none placeholder:text-[hsl(var(--ink-soft))]"
             />
           </div>
-          <div className="max-h-56 overflow-y-auto py-1">
+          <div className="max-h-60 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <p className="px-3 py-2 text-xs text-[hsl(var(--ink-soft))]">কোনো ফলাফল নেই</p>
+              <p className="px-3 py-2.5 text-sm text-[hsl(var(--ink-soft))]">কোনো ফলাফল নেই</p>
             )}
             {filtered.map((opt, i) => (
               <button
@@ -149,7 +149,7 @@ export function SearchableSelect({
                 key={opt.value}
                 onClick={() => handleSelect(opt.value)}
                 onMouseEnter={() => setHighlighted(i)}
-                className={`flex w-full flex-col px-3 py-1.5 text-left text-sm transition-colors ${
+                className={`flex w-full flex-col px-3 py-2 text-left text-base transition-colors ${
                   i === highlighted ? 'bg-[hsl(var(--wishlist-bg))]' : ''
                 } ${opt.value === value ? 'font-semibold text-[hsl(var(--accent-dark))]' : 'text-[hsl(var(--ink))]'}`}
               >

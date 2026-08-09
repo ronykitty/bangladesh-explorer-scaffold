@@ -26,11 +26,11 @@ const placeSchema = z.object({
 
 type PlaceFormValues = z.infer<typeof placeSchema>
 
-const STATUS_OPTIONS: { value: PlaceStatus; label: string; icon: string }[] = [
-  { value: 'wishlist', label: 'যেতে চাই', icon: '⭐' },
-  { value: 'planned', label: 'পরিকল্পিত', icon: '🗓' },
-  { value: 'visited', label: 'ঘুরে এসেছি', icon: '✅' },
-  { value: 'revisited', label: 'আবার গিয়েছি', icon: '🔁' },
+const STATUS_OPTIONS: { value: PlaceStatus; label: string; icon: string; tone: string; toneBg: string }[] = [
+  { value: 'wishlist', label: 'যেতে চাই', icon: '⭐', tone: '--wishlist', toneBg: '--wishlist-bg' },
+  { value: 'planned', label: 'পরিকল্পিত', icon: '🗓', tone: '--planned', toneBg: '--planned-bg' },
+  { value: 'visited', label: 'ঘুরে এসেছি', icon: '✅', tone: '--visited', toneBg: '--visited-bg' },
+  { value: 'revisited', label: 'আবার গিয়েছি', icon: '🔁', tone: '--revisited', toneBg: '--revisited-bg' },
 ]
 
 interface PlaceFormProps {
@@ -163,12 +163,14 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
 
   const submitting = createPlace.isPending || updatePlace.isPending
   const inputClasses =
-    'w-full rounded-lg border border-[hsl(var(--line))] bg-white/70 px-3 py-2 text-sm outline-none focus:border-[hsl(var(--accent))] focus:ring-2 focus:ring-[hsl(var(--accent)/0.25)]'
-  const labelClasses = 'mb-1 block text-xs font-semibold text-[hsl(var(--ink-soft))]'
+    'w-full rounded-xl border-2 border-[hsl(var(--line))] bg-white/80 px-3.5 py-2.5 text-base outline-none transition-colors focus:border-[hsl(var(--accent))] focus:ring-4 focus:ring-[hsl(var(--accent)/0.15)]'
+  const labelClasses = 'mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-[hsl(var(--ink))]'
+  const sectionTitleClasses = 'mb-3 mt-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[hsl(var(--accent-dark))] first:mt-0'
 
   return (
-    <Modal open={open} onClose={onClose} title={editingPlace ? 'এন্ট্রি এডিট করো' : 'নতুন এন্ট্রি যোগ করো'}>
-      <form onSubmit={handleSubmit(onSubmit)} className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pr-1" noValidate>
+    <Modal open={open} onClose={onClose} title={editingPlace ? '✏️ এন্ট্রি এডিট করো' : '📍 নতুন এন্ট্রি যোগ করো'}>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex max-h-[75vh] flex-col gap-1 overflow-y-auto pr-1" noValidate>
+        <p className={sectionTitleClasses}>🗺️ অবস্থান</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>বিভাগ</label>
@@ -191,7 +193,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
                 />
               )}
             />
-            {errors.division_id && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.division_id.message}</p>}
+            {errors.division_id && <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.division_id.message}</p>}
           </div>
           <div>
             <label className={labelClasses}>জেলা</label>
@@ -213,11 +215,11 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
                 />
               )}
             />
-            {errors.district_id && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.district_id.message}</p>}
+            {errors.district_id && <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.district_id.message}</p>}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>উপজেলা</label>
             <Controller
@@ -242,6 +244,7 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
           </div>
         </div>
 
+        <p className={sectionTitleClasses}>🏷️ বিবরণ</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>ক্যাটাগরি</label>
@@ -253,69 +256,76 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
                 </option>
               ))}
             </select>
-            {errors.category_id && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.category_id.message}</p>}
+            {errors.category_id && <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.category_id.message}</p>}
           </div>
           <div>
             <label className={labelClasses}>জায়গার নাম</label>
             <input className={inputClasses} placeholder="যেমন: মেঘনা ঘাট" {...register('name')} />
-            {errors.name && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.name.message}</p>}
+            {errors.name && <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.name.message}</p>}
           </div>
         </div>
 
-        <div>
-          <label className={labelClasses}>অবস্থা</label>
-          <Controller
-            control={control}
-            name="status"
-            render={({ field }) => (
-              <div className="grid grid-cols-4 gap-2">
-                {STATUS_OPTIONS.map((opt) => (
+        <p className={sectionTitleClasses}>📌 অবস্থা</p>
+        <Controller
+          control={control}
+          name="status"
+          render={({ field }) => (
+            <div className="grid grid-cols-4 gap-2">
+              {STATUS_OPTIONS.map((opt) => {
+                const active = field.value === opt.value
+                return (
                   <button
                     type="button"
                     key={opt.value}
                     onClick={() => field.onChange(opt.value)}
-                    className={`rounded-lg border-2 px-2 py-2 text-center text-xs font-semibold transition-colors ${
-                      field.value === opt.value
-                        ? 'border-[hsl(var(--accent))] bg-[hsl(var(--wishlist-bg))] text-[hsl(var(--accent-dark))]'
-                        : 'border-[hsl(var(--line))] text-[hsl(var(--ink-soft))]'
-                    }`}
+                    className="rounded-xl border-2 px-2 py-3 text-center text-sm font-bold transition-all"
+                    style={
+                      active
+                        ? {
+                            borderColor: `hsl(var(${opt.tone}))`,
+                            backgroundColor: `hsl(var(${opt.toneBg}))`,
+                            color: `hsl(var(${opt.tone}))`,
+                          }
+                        : { borderColor: 'hsl(var(--line))', color: 'hsl(var(--ink-soft))' }
+                    }
                   >
-                    <div>{opt.icon}</div>
-                    <div>{opt.label}</div>
+                    <div className="text-2xl leading-none">{opt.icon}</div>
+                    <div className="mt-1">{opt.label}</div>
                   </button>
-                ))}
-              </div>
-            )}
-          />
-        </div>
+                )
+              })}
+            </div>
+          )}
+        />
 
+        <p className={sectionTitleClasses}>🔗 আরও তথ্য</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClasses}>ছবির লিংক (ঐচ্ছিক)</label>
             <input className={inputClasses} placeholder="https://..." {...register('photo_url')} />
-            {errors.photo_url && <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.photo_url.message}</p>}
+            {errors.photo_url && <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.photo_url.message}</p>}
           </div>
           <div>
             <label className={labelClasses}>Google Maps লিংক (ঐচ্ছিক)</label>
             <input className={inputClasses} placeholder="https://maps.google.com/..." {...register('google_maps_url')} />
             {errors.google_maps_url && (
-              <p className="mt-1 text-xs text-[hsl(var(--danger))]">{errors.google_maps_url.message}</p>
+              <p className="mt-1 text-xs font-semibold text-[hsl(var(--danger))]">{errors.google_maps_url.message}</p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClasses}>নিজের রেটিং (০–৫, ঐচ্ছিক)</label>
+            <label className={labelClasses}>⭐ নিজের রেটিং (০–৫, ঐচ্ছিক)</label>
             <input type="number" min={0} max={5} step={0.5} className={inputClasses} {...register('personal_rating')} />
           </div>
           <div>
-            <label className={labelClasses}>পরিকল্পিত মাস (ঐচ্ছিক)</label>
+            <label className={labelClasses}>🗓 পরিকল্পিত তারিখ (ঐচ্ছিক)</label>
             <input type="date" className={inputClasses} {...register('target_date')} />
           </div>
         </div>
 
-        <div>
+        <div className="mt-3">
           <label className={labelClasses}>বিস্তারিত / বর্ণনা (ঐচ্ছিক)</label>
           <textarea
             className={inputClasses}
@@ -326,23 +336,23 @@ export function PlaceForm({ open, onClose, editingPlace, presetCategoryId, prese
         </div>
 
         {serverError && (
-          <p className="rounded-lg bg-[hsl(var(--danger)/0.1)] px-3 py-2 text-xs text-[hsl(var(--danger))]">
+          <p className="mt-3 rounded-xl bg-[hsl(var(--danger)/0.12)] px-3.5 py-2.5 text-sm font-semibold text-[hsl(var(--danger))]">
             {serverError}
           </p>
         )}
 
-        <div className="sticky bottom-0 -mx-1 mt-1 flex justify-end gap-2 bg-[hsl(var(--card))] px-1 pt-2">
+        <div className="sticky bottom-0 -mx-1 mt-4 flex justify-end gap-2 bg-[hsl(var(--card))] px-1 pb-1 pt-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[hsl(var(--line))] px-4 py-2 text-sm text-[hsl(var(--ink-soft))]"
+            className="rounded-xl border-2 border-[hsl(var(--line))] px-5 py-2.5 text-sm font-semibold text-[hsl(var(--ink-soft))] transition-colors hover:bg-[hsl(var(--line)/0.4)]"
           >
             বাতিল
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-[hsl(var(--accent))] px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
+            className="rounded-xl bg-[hsl(var(--accent))] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 disabled:opacity-60"
           >
             {submitting ? 'সংরক্ষণ হচ্ছে...' : editingPlace ? 'আপডেট করো' : 'সংরক্ষণ করো'}
           </button>

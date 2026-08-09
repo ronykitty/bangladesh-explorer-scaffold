@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/page-header'
 import { usePlaces, type PlaceWithRelations, type PlacePriority, type TransportMode } from '@/hooks/use-places'
 import { useDivisions, useDistricts } from '@/hooks/use-reference-data'
+import { useOverallExpenseStats } from '@/hooks/useExpenses'
 // Adjust this import path if status-badge.tsx lives elsewhere in your project
 import { STATUS_META } from '@/components/places/status-badge'
 import type { PlaceStatus } from '@/types/database'
@@ -92,6 +93,12 @@ export default function DashboardPage() {
   const { data: places, isLoading } = usePlaces()
   const { data: divisions } = useDivisions()
   const { data: districts } = useDistricts()
+  const {
+    totalExpense: actualTotalExpense,
+    hasExpenses,
+    byMonth: expenseByMonth,
+    loading: expenseLoading,
+  } = useOverallExpenseStats()
 
   const stats = useMemo(() => {
     if (!places) return null
@@ -505,19 +512,72 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* ---------------- Budget & Cost Tracker ---------------- */}
+          {/* ---------------- Actual Trip Expenses (real `expenses` table — single source of truth) ---------------- */}
           <section className="glass mt-6 rounded-xl p-4">
             <h2 className="flex items-center gap-2 font-serif text-base text-[hsl(var(--accent-dark))]">
-              <Wallet className="h-4 w-4" /> বাজেট ও খরচ
+              <Wallet className="h-4 w-4" /> প্রকৃত ভ্রমণ খরচ
             </h2>
+
+            {expenseLoading ? (
+              <p className="mt-2 flex items-center gap-2 text-sm text-[hsl(var(--ink-soft))]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> লোড হচ্ছে...
+              </p>
+            ) : !hasExpenses ? (
+              <p className="mt-2 text-sm text-[hsl(var(--ink-soft))]">কোনো খরচের তথ্য নেই</p>
+            ) : (
+              <>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <StatCard
+                    label="মোট প্রকৃত খরচ (সব ট্রিপ)"
+                    value={currency(actualTotalExpense)}
+                    tone="visited"
+                  />
+                </div>
+
+                {expenseByMonth.length > 0 && (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full min-w-[280px] text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-[hsl(var(--line))] text-[hsl(var(--ink-soft))]">
+                          <th className="py-1.5 pr-2">মাস</th>
+                          <th className="py-1.5 pr-2 text-right">খরচ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...expenseByMonth].reverse().map((m) => (
+                          <tr key={m.month} className="border-b border-[hsl(var(--line)/0.5)]">
+                            <td className="py-1.5 pr-2">{m.month}</td>
+                            <td className="py-1.5 pr-2 text-right font-semibold text-[hsl(var(--ink))]">
+                              {currency(m.total)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+
+            <p className="mt-3 text-[10px] text-[hsl(var(--ink-soft))]/70">
+              এই সংখ্যাগুলো ট্রিপে সরাসরি যোগ করা প্রকৃত <code>expenses</code> রেকর্ড থেকে হিসাব করা — কোনো অনুমান নয়।
+            </p>
+          </section>
+
+          {/* ---------------- Planning Estimate (place-level `estimated_cost` — separate from actual expense) ---------------- */}
+          <section className="glass mt-6 rounded-xl p-4">
+            <h2 className="font-serif text-base text-[hsl(var(--accent-dark))]">🧮 প্ল্যানিং অনুমান (স্পটভিত্তিক)</h2>
+            <p className="mt-1 text-xs text-[hsl(var(--ink-soft))]">
+              নিচের সংখ্যাগুলো প্রতিটি স্পটে যোগ করা আনুমানিক খরচ থেকে — এটা প্রকৃত খরচ নয়, শুধু পরিকল্পনার জন্য একটা ধারণা।
+            </p>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard label="মোট আনুমানিক বাজেট" value={currency(stats.totalBudgetAll)} />
-              <StatCard label="মোট খরচ — ভ্রমণকৃত" value={currency(stats.totalSpentVisited)} tone="visited" />
-              <StatCard label="বাকি আনুমানিক খরচ" value={currency(stats.remainingEstimate)} tone="wishlist" />
-              <StatCard label="গড় খরচ / স্পট (ভ্রমণকৃত)" value={currency(stats.avgCostVisited)} />
+              <StatCard label="আনুমানিক — ভ্রমণকৃত স্পট" value={currency(stats.totalSpentVisited)} />
+              <StatCard label="বাকি আনুমানিক" value={currency(stats.remainingEstimate)} tone="wishlist" />
+              <StatCard label="গড় আনুমানিক / স্পট" value={currency(stats.avgCostVisited)} />
             </div>
             <p className="mt-2 text-[10px] text-[hsl(var(--ink-soft))]/70">
-              গড় খরচ / স্পট (সব): {currency(stats.avgCostAll)} · শুধু যেসব স্পটে খরচ যোগ করা আছে সেগুলো হিসাবে ধরা হয়েছে।
+              গড় আনুমানিক / স্পট (সব): {currency(stats.avgCostAll)} · শুধু যেসব স্পটে estimated_cost যোগ করা আছে সেগুলো হিসাবে ধরা হয়েছে।
             </p>
           </section>
 

@@ -18,6 +18,10 @@
   --wishlist-bg: 45 100% 90%;
   --visited: 145 60% 39%;
   --visited-bg: 145 45% 91%;
+  --planned: 205 85% 45%;
+  --planned-bg: 205 90% 92%;
+  --revisited: 265 55% 52%;
+  --revisited-bg: 265 55% 93%;
   --danger: 8 60% 46%;
 }
 
@@ -33,7 +37,15 @@
   --wishlist-bg: 40 40% 18%;
   --visited: 145 55% 48%;
   --visited-bg: 145 30% 16%;
+  --planned: 205 85% 62%;
+  --planned-bg: 205 40% 18%;
+  --revisited: 265 60% 68%;
+  --revisited-bg: 265 30% 20%;
   --danger: 8 65% 58%;
+}
+
+html {
+  font-size: 17px;
 }
 
 html, body, #root {

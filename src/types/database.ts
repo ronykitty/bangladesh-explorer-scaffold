@@ -7,6 +7,9 @@
 // `supabase db diff` / migration-based workflows, pull a migration for them
 // before your next deploy so the migration history stays in sync with the DB.
 //
+// ⚠️ Same applies to profiles / likes / comments and places.is_public — applied
+// directly via the "social_features" migration on 2026-08-09, no local .sql file yet.
+//
 // Once the Supabase CLI is linked to the project, this can be regenerated automatically with:
 //   npx supabase gen types typescript --project-id xaummlewqjletagnuxhu > src/types/database.ts
 
@@ -79,6 +82,98 @@ export interface Database {
             foreignKeyName: 'districts_division_id_fkey'
             columns: ['division_id']
             referencedRelation: 'divisions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          id: string
+          username: string | null
+          full_name: string | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      likes: {
+        Row: {
+          id: string
+          user_id: string
+          place_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          place_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          place_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'likes_place_id_fkey'
+            columns: ['place_id']
+            referencedRelation: 'places'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          id: string
+          user_id: string
+          place_id: string
+          content: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          place_id: string
+          content: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          place_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'comments_place_id_fkey'
+            columns: ['place_id']
+            referencedRelation: 'places'
             referencedColumns: ['id']
           },
         ]
@@ -157,6 +252,7 @@ export interface Database {
           estimated_cost: number | null
           priority: PlacePriority | null
           transport_mode: TransportMode | null
+          is_public: boolean
           created_at: string
           updated_at: string
         }
@@ -178,6 +274,7 @@ export interface Database {
           estimated_cost?: number | null
           priority?: PlacePriority | null
           transport_mode?: TransportMode | null
+          is_public?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -199,6 +296,7 @@ export interface Database {
           estimated_cost?: number | null
           priority?: PlacePriority | null
           transport_mode?: TransportMode | null
+          is_public?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -432,4 +530,19 @@ export interface Database {
       place_status: PlaceStatus
     }
   }
+}
+
+// Convenience aliases for the social-feature tables
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
+export type Like = Database['public']['Tables']['likes']['Row']
+
+export type Comment = Database['public']['Tables']['comments']['Row']
+export type CommentInsert = Database['public']['Tables']['comments']['Insert']
+
+// Comment joined with its author's public profile fields (used by useComments)
+export type CommentWithProfile = Comment & {
+  profile: Pick<Profile, 'id' | 'username' | 'avatar_url'> | null
 }
