@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -322,10 +322,10 @@ export type Database = {
           name: string
           personal_rating: number | null
           photo_url: string | null
-          priority: string | null
+          priority: Database["public"]["Enums"]["place_priority"] | null
           status: Database["public"]["Enums"]["place_status"]
           target_date: string | null
-          transport_mode: string | null
+          transport_mode: Database["public"]["Enums"]["transport_mode"] | null
           union_village: string | null
           upazila_id: string | null
           upazila_name: string | null
@@ -344,10 +344,10 @@ export type Database = {
           name: string
           personal_rating?: number | null
           photo_url?: string | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["place_priority"] | null
           status?: Database["public"]["Enums"]["place_status"]
           target_date?: string | null
-          transport_mode?: string | null
+          transport_mode?: Database["public"]["Enums"]["transport_mode"] | null
           union_village?: string | null
           upazila_id?: string | null
           upazila_name?: string | null
@@ -366,10 +366,10 @@ export type Database = {
           name?: string
           personal_rating?: number | null
           photo_url?: string | null
-          priority?: string | null
+          priority?: Database["public"]["Enums"]["place_priority"] | null
           status?: Database["public"]["Enums"]["place_status"]
           target_date?: string | null
-          transport_mode?: string | null
+          transport_mode?: Database["public"]["Enums"]["transport_mode"] | null
           union_village?: string | null
           upazila_id?: string | null
           upazila_name?: string | null
@@ -469,7 +469,7 @@ export type Database = {
           id: string
           notes: string | null
           start_date: string | null
-          status: string
+          status: Database["public"]["Enums"]["trip_status"]
           title: string
           upazila_id: string | null
           updated_at: string
@@ -483,7 +483,7 @@ export type Database = {
           id?: string
           notes?: string | null
           start_date?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["trip_status"]
           title: string
           upazila_id?: string | null
           updated_at?: string
@@ -497,7 +497,7 @@ export type Database = {
           id?: string
           notes?: string | null
           start_date?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["trip_status"]
           title?: string
           upazila_id?: string | null
           updated_at?: string
@@ -600,7 +600,22 @@ export type Database = {
     }
     Enums: {
       friendship_status: "pending" | "accepted" | "declined" | "blocked"
+      place_priority: "p1_must_visit" | "p2_high" | "p3_normal" | "p4_optional"
       place_status: "wishlist" | "planned" | "visited" | "revisited"
+      transport_mode:
+        | "train"
+        | "local_train"
+        | "bus"
+        | "local_bus"
+        | "launch_boat"
+        | "rickshaw_auto_cng"
+        | "mixed"
+      trip_status:
+        | "wishlist"
+        | "planned"
+        | "ongoing"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -729,7 +744,27 @@ export const Constants = {
   public: {
     Enums: {
       friendship_status: ["pending", "accepted", "declined", "blocked"],
+      place_priority: ["p1_must_visit", "p2_high", "p3_normal", "p4_optional"],
       place_status: ["wishlist", "planned", "visited", "revisited"],
+      transport_mode: [
+        "train",
+        "local_train",
+        "bus",
+        "local_bus",
+        "launch_boat",
+        "rickshaw_auto_cng",
+        "mixed",
+      ],
+      trip_status: ["wishlist", "planned", "ongoing", "completed", "cancelled"],
     },
   },
 } as const
+
+// --- App-level convenience types ---
+export type Profile = Tables<'profiles'>
+export type PlaceStatus = Enums<'place_status'>
+export type PlacePriority = Enums<'place_priority'>
+export type TransportMode = Enums<'transport_mode'>
+export type TripStatus = Enums<'trip_status'>
+export type Trip = Tables<'trips'>
+export type CommentWithProfile = Tables<'comments'> & { profile: Profile }
